@@ -1,46 +1,45 @@
 
-name: Full Release APK
+name: Sync Official Nuvio
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build:
+  sync:
+    name: Merge official Nuvio updates
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Watch Party branch
         uses: actions/checkout@v4
         with:
           ref: watchparty
+          fetch-depth: 0
+          persist-credentials: true
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Prepare runtime properties
-        run: touch local.properties
-
-      - name: Build Full Release
+      - name: Configure Git
         run: |
-          ./gradlew :androidApp:assembleFullRelease \
-            -Pnuvio.android.distribution=full \
-            -Pnuvio.ios.distribution=appstore \
-            --stacktrace
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Upload Release APKs
-        uses: actions/upload-artifact@v4
-        with:
-          name: nuvio-full-release-apks
-          path: androidApp/build/outputs/apk/full/release/*.apk
-          if-no-files-found: error
-          retention-days: 7
+      - name: Fetch official Nuvio
+        run: |
+          git remote add upstream https://github.com/NuvioMedia/NuvioMobile.git
+          git fetch upstream
+
+      - name: Check official branch
+        run: |
+          git branch -r
+          git show-ref --verify refs/remotes/upstream/cmp-rewrite
+
+      - name: Merge official updates
+        run: |
+          git merge --no-edit upstream/cmp-rewrite
+
+      - name: Push updated Watch Party branch
+        run: |
+          git push origin HEAD:watchparty
           
