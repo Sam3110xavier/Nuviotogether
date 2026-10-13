@@ -194,6 +194,7 @@ final class MPVPlayerBridgeImpl: NSObject, NuvioPlayerBridge {
     func getBufferedMs() -> Int64 { return playerVC?.bufferedMs ?? 0 }
     func getPlaybackSpeed() -> Float { playerVC?.currentSpeed ?? 1.0 }
     func getErrorMessage() -> String { playerVC?.currentErrorMessage ?? "" }
+    func getProperty(name: String) -> String { playerVC?.getString(name) ?? "" }
 
     func destroy() {
         playerVC?.destroyPlayer()
@@ -348,12 +349,25 @@ final class MPVPlayerViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        SystemUI.shared.playerDidBecomeVisible(self)
         refreshImmersiveSystemUI()
         becomeFirstResponder()
         UIApplication.shared.beginReceivingRemoteControlEvents()
         publishCachedNowPlayingInfoIfNeeded()
         syncVideoSurfaceLayout()
         attemptStartPendingLoad()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        SystemUI.shared.playerDidBecomeHidden(self)
+        super.viewWillDisappear(animated)
+    }
+
+    override func didMove(toParent parent: UIViewController?) {
+        super.didMove(toParent: parent)
+        if parent == nil {
+            SystemUI.shared.playerDidBecomeHidden(self)
+        }
     }
 
     override func viewSafeAreaInsetsDidChange() {
@@ -1228,7 +1242,7 @@ final class MPVPlayerViewController: UIViewController {
         return data
     }
 
-    private func getString(_ name: String) -> String? {
+    fileprivate func getString(_ name: String) -> String? {
         guard mpv != nil else { return nil }
         let cstr = mpv_get_property_string(mpv, name)
         let str: String? = cstr == nil ? nil : String(cString: cstr!)
