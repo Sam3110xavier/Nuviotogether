@@ -72,6 +72,7 @@ import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.buildAddonCatalogRefreshSignature
 import com.nuvio.app.features.mdblist.MdbListSettings
 import com.nuvio.app.features.mdblist.MdbListSettingsRepository
+import com.nuvio.app.features.mdblist.MdbListTracker
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsUiState
 import com.nuvio.app.features.player.PlayerSettingsRepository
@@ -136,7 +137,6 @@ fun SettingsScreen(
     onContinueWatchingClick: () -> Unit = {},
     onAddonsClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
-    onDownloadsClick: () -> Unit = {},
     onAccountClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
     onLicensesAttributionsClick: () -> Unit = {},
@@ -199,6 +199,10 @@ fun SettingsScreen(
         val traktCommentsEnabled by remember {
             TraktCommentsSettings.ensureLoaded()
             TraktCommentsSettings.enabled
+        }.collectAsStateWithLifecycle()
+        val mdbListConnected by remember {
+            MdbListTracker.ensureLoaded()
+            MdbListTracker.isAuthenticated
         }.collectAsStateWithLifecycle()
         val trackingSettingsUiState by remember {
             TrackingSettingsRepository.ensureLoaded()
@@ -422,6 +426,7 @@ fun SettingsScreen(
                         traktAuthUiState = traktAuthUiState,
                         simklAuthUiState = simklAuthUiState,
                         traktCommentsEnabled = traktCommentsEnabled,
+                        mdbListConnected = mdbListConnected,
                         trackingSettingsUiState = trackingSettingsUiState,
                         homescreenHeroEnabled = homescreenSettingsUiState.heroEnabled,
                         homescreenShowCatalogType = homescreenSettingsUiState.showCatalogType,
@@ -433,7 +438,6 @@ fun SettingsScreen(
                         continueWatchingPreferencesUiState = continueWatchingPreferencesUiState,
                         posterCardStyleUiState = posterCardStyleUiState,
                         onSwitchProfile = onSwitchProfile,
-                        onDownloadsClick = onDownloadsClick,
                         onSupportersContributorsClick = openSupportersContributors,
                         onLicensesAttributionsClick = openLicensesAttributions,
                         onCheckForUpdatesClick = onCheckForUpdatesClick,
@@ -488,6 +492,7 @@ fun SettingsScreen(
                         traktAuthUiState = traktAuthUiState,
                         simklAuthUiState = simklAuthUiState,
                         traktCommentsEnabled = traktCommentsEnabled,
+                        mdbListConnected = mdbListConnected,
                         trackingSettingsUiState = trackingSettingsUiState,
                         homescreenHeroEnabled = homescreenSettingsUiState.heroEnabled,
                         homescreenShowCatalogType = homescreenSettingsUiState.showCatalogType,
@@ -504,7 +509,6 @@ fun SettingsScreen(
                         onContinueWatchingClick = openContinueWatching,
                         onAddonsClick = openAddons,
                         onPluginsClick = openPlugins,
-                        onDownloadsClick = onDownloadsClick,
                         onAccountClick = openAccount,
                         onSupportersContributorsClick = openSupportersContributors,
                         onLicensesAttributionsClick = openLicensesAttributions,
@@ -566,6 +570,7 @@ private fun MobileSettingsScreen(
     traktAuthUiState: TraktAuthUiState,
     simklAuthUiState: SimklAuthUiState,
     traktCommentsEnabled: Boolean,
+    mdbListConnected: Boolean,
     trackingSettingsUiState: TrackingSettingsUiState,
     homescreenHeroEnabled: Boolean,
     homescreenShowCatalogType: Boolean,
@@ -582,7 +587,6 @@ private fun MobileSettingsScreen(
     onContinueWatchingClick: () -> Unit = {},
     onAddonsClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
-    onDownloadsClick: () -> Unit = {},
     onAccountClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
     onLicensesAttributionsClick: () -> Unit = {},
@@ -635,7 +639,6 @@ private fun MobileSettingsScreen(
                     SettingsPage.MetaScreen -> onMetaScreenClick()
                     else -> onPageChange(target.page)
                 }
-                SettingsSearchTarget.Downloads -> onDownloadsClick()
                 SettingsSearchTarget.Collections -> onCollectionsClick()
                 SettingsSearchTarget.SwitchProfile -> onSwitchProfile?.invoke()
                 SettingsSearchTarget.CheckForUpdates -> onCheckForUpdatesClick?.invoke()
@@ -707,7 +710,6 @@ private fun MobileSettingsScreen(
                             onLicensesAttributionsClick = onLicensesAttributionsClick,
                             onCheckForUpdatesClick = onCheckForUpdatesClick,
                             onTestUpdateBannerClick = onTestUpdateBannerClick,
-                            onDownloadsClick = onDownloadsClick,
                             onAccountClick = onAccountClick,
                             onSwitchProfileClick = onSwitchProfile,
                             showSupportersContributorsPage = AppFeaturePolicy.supportersContributorsPageEnabled,
@@ -801,8 +803,17 @@ private fun MobileSettingsScreen(
                     showPluginsEntry = AppFeaturePolicy.pluginsEnabled,
                     onAddonsClick = onAddonsClick,
                     onPluginsClick = onPluginsClick,
+                    onMediaServersClick = { onPageChange(SettingsPage.MediaServers) },
                 )
                 SettingsPage.Addons -> addonsSettingsContent()
+                SettingsPage.MediaServers -> mediaServersSettingsContent(
+                    isTablet = false,
+                    onServerClick = { onPageChange(SettingsPage.MediaServer) },
+                )
+                SettingsPage.MediaServer -> mediaServerSettingsContent(
+                    isTablet = false,
+                    onBack = onNavigateBack,
+                )
                 SettingsPage.Plugins -> if (AppFeaturePolicy.pluginsEnabled) pluginsSettingsContent() else addonsSettingsContent()
                 SettingsPage.Homescreen -> homescreenSettingsContent(
                     isTablet = false,
@@ -841,6 +852,7 @@ private fun MobileSettingsScreen(
                     simklUiState = simklAuthUiState,
                     settingsUiState = trackingSettingsUiState,
                     commentsEnabled = traktCommentsEnabled,
+                    mdbListConnected = mdbListConnected,
                     onCommentsEnabledChange = TraktCommentsSettings::setEnabled,
                 )
             }
@@ -938,6 +950,7 @@ private fun TabletSettingsScreen(
     traktAuthUiState: TraktAuthUiState,
     simklAuthUiState: SimklAuthUiState,
     traktCommentsEnabled: Boolean,
+    mdbListConnected: Boolean,
     trackingSettingsUiState: TrackingSettingsUiState,
     homescreenHeroEnabled: Boolean,
     homescreenShowCatalogType: Boolean,
@@ -949,7 +962,6 @@ private fun TabletSettingsScreen(
     continueWatchingPreferencesUiState: ContinueWatchingPreferencesUiState,
     posterCardStyleUiState: PosterCardStyleUiState,
     onSwitchProfile: (() -> Unit)? = null,
-    onDownloadsClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
     onLicensesAttributionsClick: () -> Unit = {},
     onCheckForUpdatesClick: (() -> Unit)? = null,
@@ -1028,7 +1040,6 @@ private fun TabletSettingsScreen(
                             openInlinePage(target.page)
                         }
                     }
-                    SettingsSearchTarget.Downloads -> onDownloadsClick()
                     SettingsSearchTarget.Collections -> onCollectionsClick()
                     SettingsSearchTarget.SwitchProfile -> onSwitchProfile?.invoke()
                     SettingsSearchTarget.CheckForUpdates -> onCheckForUpdatesClick?.invoke()
@@ -1131,7 +1142,6 @@ private fun TabletSettingsScreen(
                                 onLicensesAttributionsClick = { openInlinePage(SettingsPage.LicensesAttributions) },
                                 onCheckForUpdatesClick = onCheckForUpdatesClick,
                                 onTestUpdateBannerClick = onTestUpdateBannerClick,
-                                onDownloadsClick = onDownloadsClick,
                                 onAccountClick = { openInlinePage(SettingsPage.Account) },
                                 onSwitchProfileClick = onSwitchProfile,
                                 showAccountSection = activeCategory == SettingsCategory.Account,
@@ -1229,8 +1239,17 @@ private fun TabletSettingsScreen(
                         showPluginsEntry = AppFeaturePolicy.pluginsEnabled,
                         onAddonsClick = { openInlinePage(SettingsPage.Addons) },
                         onPluginsClick = { openInlinePage(SettingsPage.Plugins) },
+                        onMediaServersClick = { openInlinePage(SettingsPage.MediaServers) },
                     )
                     SettingsPage.Addons -> addonsSettingsContent()
+                    SettingsPage.MediaServers -> mediaServersSettingsContent(
+                        isTablet = true,
+                        onServerClick = { openInlinePage(SettingsPage.MediaServer) },
+                    )
+                    SettingsPage.MediaServer -> mediaServerSettingsContent(
+                        isTablet = true,
+                        onBack = onNavigateBack,
+                    )
                     SettingsPage.Plugins -> if (AppFeaturePolicy.pluginsEnabled) pluginsSettingsContent() else addonsSettingsContent()
                     SettingsPage.Homescreen -> homescreenSettingsContent(
                         isTablet = true,
@@ -1269,6 +1288,7 @@ private fun TabletSettingsScreen(
                         simklUiState = simklAuthUiState,
                         settingsUiState = trackingSettingsUiState,
                         commentsEnabled = traktCommentsEnabled,
+                        mdbListConnected = mdbListConnected,
                         onCommentsEnabledChange = TraktCommentsSettings::setEnabled,
                     )
                 }
